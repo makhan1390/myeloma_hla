@@ -1,0 +1,31 @@
+library(plyr)
+library(readr)
+library(dplyr)
+
+setwd("~/Box/Cozen_MMAFA/MM_Meta")                                              #set directory to box file
+mydir1 = "FDR_NMDP"
+mydir2 = "FDR_USC"
+myfiles1 = list.files(path=mydir1, pattern="*HR_FDR.csv", full.names=TRUE)      #myfiles1 gets n from FDR_NMDP
+myfiles2 = list.files(path=mydir2, pattern="*HR_FDR.csv", full.names=TRUE)      #myfiles2 gets n from FDR_USC 
+
+data1 = ldply(myfiles1, read_csv)                                                
+df1 = data1[-c(3:13)]                                                           #df1 takes out extra columns, only leaves HLA and n from FDR_NMDP
+df1a = data.frame(append(data1, c(dataset='FDR_NMDP'), after=0))                #adds colums to data set about which data FDR or USC it is from
+  
+data2 = ldply(myfiles2, read_csv)
+df2 = data2[-c(3:13)]                                                           #df2 takes out extra columns, only leaves HLA and n from FDR_USC
+df2a = data.frame(append(data2, c(dataset='FDR_USC'), after=0))                 #adds colums to data set about which data FDR or USC it is from
+
+combine_data<-full_join(df1, df2, by = "X")
+combine_data                                                                    #combined data of n in NMDP and USC files
+mergedata_hori <- merge(combine_data, OR_data1, by.x=c("X"), by.y=c("HLA"))     #mergedata_hori is a dataset with OR and n joined by HLA 
+mergedata_vert <- rbind(df1a, df2a)                                             #crude vertical bind                     
+
+install.packages(c("metafor","meta"))
+
+library(metafor)
+library(meta)
+
+mm_meta <- escalc(xi=X1,ni=X1,measure="PR",data=mergedata_vert)                   #calculating overall summary proportion, xi=cases, ni=total, cases = numbers in this data set?
+pes=rma(yi,vi,data=mm_meta,method="DL",weighted=TRUE)
+print(pes,digits=6);confint(pes)
